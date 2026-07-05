@@ -36,6 +36,16 @@ export const fontLibrary: Record<FontId, { label: string; stack: string }> = {
   },
 };
 
+/* Normalized ascent/descent per font (from font metrics), used to place
+   the first text baseline exactly on the baseline grid. */
+export const fontMetrics: Record<FontId, { ascent: number; descent: number }> = {
+  inter: { ascent: 0.969, descent: 0.242 },
+  serif: { ascent: 1.036, descent: 0.361 },
+  mono: { ascent: 1.02, descent: 0.3 },
+};
+
+export const PT_TO_MM = 25.4 / 72;
+
 type ItemBase = { id: string; frame: Frame };
 
 export type TextItem = ItemBase & {
@@ -48,6 +58,7 @@ export type TextItem = ItemBase & {
   letterSpacing: number;
   align: 'left' | 'center' | 'right';
   color: string;
+  snapBaseline: boolean;
 };
 
 export type ShapeItem = ItemBase & {
@@ -163,6 +174,7 @@ export function makeText(partial: Partial<TextItem> & { frame: Frame }): TextIte
     letterSpacing: 0,
     align: 'left',
     color: '#141414',
+    snapBaseline: true,
     ...partial,
   };
 }
@@ -440,6 +452,13 @@ export function loadDoc(): Doc | null {
     const doc = JSON.parse(raw) as Doc;
     if (!doc.pages?.length || !doc.grid || !doc.format) return null;
     if (!doc.output) doc.output = { ...defaultOutput };
+    for (const page of doc.pages) {
+      for (const item of page.items) {
+        if (item.kind === 'text' && item.snapBaseline === undefined) {
+          item.snapBaseline = true;
+        }
+      }
+    }
     return doc;
   } catch {
     return null;

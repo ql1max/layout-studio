@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 import {
   MM,
+  PT_TO_MM,
   clampFrame,
   columnWidthMm,
   contentBox,
   fontLibrary,
+  fontMetrics,
   frameRectMm,
   pageFormats,
   rowCount,
@@ -22,12 +24,28 @@ export function pageOriginMm(doc: Doc, index: number): number {
 
 /* ── Item rendering ──────────────────────────────────────── */
 
+/* InDesign-style baseline alignment: quantize the line height to a
+   whole number of baseline units, then pad the box so the first text
+   baseline lands exactly on a grid line. */
+export function baselineTextStyle(item: TextItem, baselineMm: number): CSSProperties {
+  const fontMm = item.sizePt * PT_TO_MM;
+  const steps = Math.max(1, Math.round((fontMm * item.lineHeight) / baselineMm));
+  const lineMm = steps * baselineMm;
+  const metrics = fontMetrics[item.font];
+  const contentMm = (metrics.ascent + metrics.descent) * fontMm;
+  const baselineInBox = (lineMm - contentMm) / 2 + metrics.ascent * fontMm;
+  const shift = (baselineMm - (baselineInBox % baselineMm)) % baselineMm;
+  return { lineHeight: `${lineMm}mm`, paddingTop: `${shift}mm` };
+}
+
 function TextView({
   item,
+  baselineMm,
   editing,
   onCommit,
 }: {
   item: TextItem;
+  baselineMm: number;
   editing: boolean;
   onCommit: (text: string) => void;
 }) {
@@ -52,6 +70,7 @@ function TextView({
     letterSpacing: `${item.letterSpacing}em`,
     textAlign: item.align,
     color: item.color,
+    ...(item.snapBaseline ? baselineTextStyle(item, baselineMm) : null),
   };
 
   if (editing) {
@@ -130,17 +149,26 @@ function TableView({
 
 function ItemBody({
   item,
+  baselineMm,
   editing,
   onTextCommit,
   onCellCommit,
 }: {
   item: Item;
+  baselineMm: number;
   editing: boolean;
   onTextCommit: (text: string) => void;
   onCellCommit: (rowIndex: number, field: 'label' | 'value', text: string) => void;
 }) {
   if (item.kind === 'text') {
-    return <TextView item={item} editing={editing} onCommit={onTextCommit} />;
+    return (
+      <TextView
+        item={item}
+        baselineMm={baselineMm}
+        editing={editing}
+        onCommit={onTextCommit}
+      />
+    );
   }
 
   if (item.kind === 'shape') {
@@ -212,6 +240,15 @@ export type ResizeHandle = 'n' | 's' | 'e' | 'w' | 'se';
 
 const handleList: ResizeHandle[] = ['n', 's', 'e', 'w', 'se'];
 
+export function itemLabel(item: Item): string {
+  if (item.kind === 'text') return 'Text';
+  if (item.kind === 'shape') {
+    return item.shape.charAt(0).toUpperCase() + item.shape.slice(1);
+  }
+  if (item.kind === 'image') return item.isLogo ? 'Logo' : 'Image';
+  return 'Table';
+}
+
 export function PageView({
   doc,
   page,
@@ -239,26 +276,37 @@ export function PageView({
         background: page.background,
       }}
     >
-      {(overlayColumns || overlayBaseline) && (
-        <div
-          className="page__grid"
-          style={{
-            left: `${box.x}mm`,
-            top: `${box.y}mm`,
-            width: `${box.w}mm`,
-            height: `${rows * doc.grid.baselineMm}mm`,
-            backgroundImage: [
-              overlayColumns
-                ? `repeating-linear-gradient(to right, rgba(70,110,255,0.08) 0, rgba(70,110,255,0.08) ${colW}mm, transparent ${colW}mm, transparent ${colW + doc.grid.gutterMm}mm)`
-                : null,
-              overlayBaseline
-                ? `repeating-linear-gradient(to bottom, rgba(70,110,255,0.28) 0, rgba(70,110,255,0.28) 0.2mm, transparent 0.2mm, transparent ${doc.grid.baselineMm}mm)`
-                : null,
-            ]
-              .filter(Boolean)
-              .join(', '),
-          }}
-        />
+      {doc.overlay !== 'none' && (
+        <>
+          <div
+            className="page__grid"
+            style={{
+              left: `${box.x}mm`,
+              top: `${box.y}mm`,
+              width: `${box.w}mm`,
+              height: `${rows * doc.grid.baselineMm}mm`,
+              backgroundImage: [
+                overlayColumns
+                  ? `repeating-linear-gradient(to right, rgba(70,110,255,0.06) 0, rgba(70,110,255,0.06) ${colW}mm, transparent ${colW}mm, transparent ${colW + doc.grid.gutterMm}mm)`
+                  : null,
+                overlayBaseline
+                  ? `repeating-linear-gradient(to bottom, transparent 0, transparent ${doc.grid.baselineMm - 0.2}mm, rgba(70,110,255,0.35) ${doc.grid.baselineMm - 0.2}mm, rgba(70,110,255,0.35) ${doc.grid.baselineMm}mm)`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(', '),
+            }}
+          />
+          <div
+            className="page__margin-box"
+            style={{
+              left: `${box.x}mm`,
+              top: `${box.y}mm`,
+              width: `${box.w}mm`,
+              height: `${box.h}mm`,
+            }}
+          />
+        </>
       )}
 
       {page.items.map((item) => {
@@ -292,12 +340,22 @@ export function PageView({
           >
             <ItemBody
               item={item}
+              baselineMm={doc.grid.baselineMm}
               editing={Boolean(editing)}
               onTextCommit={(text) => interaction?.onTextCommit(page, item, text)}
               onCellCommit={(rowIndex, field, text) =>
                 interaction?.onCellCommit(page, item, rowIndex, field, text)
               }
             />
+
+            {selected && interaction && (
+              <span
+                className="selection-tag"
+                style={{ transform: `translateY(-115%) scale(${1 / scale})` }}
+              >
+                {itemLabel(item)}
+              </span>
+            )}
 
             {selected && !editing && interaction && (
               <>

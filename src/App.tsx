@@ -1036,6 +1036,25 @@ export default function App() {
                       }
                     />
                   </Field>
+                  <label className="check-row">
+                    <input
+                      type="checkbox"
+                      checked={selectedItem.snapBaseline}
+                      onChange={(event) =>
+                        updateSelected((item) => ({
+                          ...item,
+                          snapBaseline: event.target.checked,
+                        }))
+                      }
+                    />
+                    Align to baseline grid
+                  </label>
+                  {selectedItem.snapBaseline && (
+                    <p className="hint">
+                      Line height rounds to whole baseline units and the first
+                      baseline sits on the grid.
+                    </p>
+                  )}
                 </section>
               )}
 

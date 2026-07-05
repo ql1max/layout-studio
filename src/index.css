@@ -572,7 +572,31 @@ body {
 .page__grid {
   position: absolute;
   pointer-events: none;
-  z-index: 40;
+}
+
+.page__margin-box {
+  position: absolute;
+  pointer-events: none;
+  border: 0.25mm solid rgba(70, 110, 255, 0.4);
+}
+
+.selection-tag {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: bottom left;
+  background: var(--accent);
+  color: #fff;
+  font-family: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 3px 3px 3px 0;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 70;
 }
 
 .page-item {
