@@ -680,6 +680,65 @@ body {
   border-color: var(--ui-muted);
 }
 
+.ruler {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(10, 10, 11, 0.85);
+  z-index: 90;
+  overflow: hidden;
+  font-family: var(--ui-mono);
+  font-size: 8px;
+  color: var(--ui-muted);
+}
+
+.ruler--h {
+  top: 0;
+  left: 18px;
+  right: 0;
+  height: 18px;
+  border-bottom: 1px solid var(--ui-line);
+}
+
+.ruler--v {
+  top: 18px;
+  left: 0;
+  bottom: 0;
+  width: 18px;
+  border-right: 1px solid var(--ui-line);
+}
+
+.ruler--h span {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-left: 1px solid var(--ui-line);
+  padding: 3px 0 0 3px;
+  margin-left: -18px;
+}
+
+.ruler--v span {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  border-top: 1px solid var(--ui-line);
+  padding: 2px 0 0 2px;
+  writing-mode: vertical-rl;
+  margin-top: -18px;
+}
+
+.ruler-corner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 18px;
+  height: 18px;
+  background: rgba(10, 10, 11, 0.95);
+  border-right: 1px solid var(--ui-line);
+  border-bottom: 1px solid var(--ui-line);
+  z-index: 95;
+  pointer-events: none;
+}
+
 .canvas__zoom {
   position: absolute;
   bottom: 0.875rem;

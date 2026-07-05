@@ -715,6 +715,34 @@ export function CanvasView({
         </button>
       </div>
 
+      {(['x', 'y'] as const).map((axis) => {
+        const container = containerRef.current;
+        const size =
+          axis === 'x' ? (container?.clientWidth ?? 1400) : (container?.clientHeight ?? 900);
+        const offset = axis === 'x' ? transform.x : transform.y;
+        const startMm = -offset / (MM * transform.scale);
+        const endMm = (size - offset) / (MM * transform.scale);
+        const step =
+          transform.scale > 1.2 ? 10 : transform.scale > 0.5 ? 20 : transform.scale > 0.25 ? 50 : 100;
+        const ticks: { pos: number; label: number }[] = [];
+        for (let mm = Math.floor(startMm / step) * step; mm <= endMm; mm += step) {
+          ticks.push({ pos: mm * MM * transform.scale + offset, label: mm });
+        }
+        return (
+          <div key={axis} className={`ruler ruler--${axis === 'x' ? 'h' : 'v'}`}>
+            {ticks.map((tick) => (
+              <span
+                key={tick.label}
+                style={axis === 'x' ? { left: tick.pos } : { top: tick.pos }}
+              >
+                {tick.label}
+              </span>
+            ))}
+          </div>
+        );
+      })}
+      <div className="ruler-corner" />
+
       <div className="canvas__zoom" onPointerDown={(event) => event.stopPropagation()}>
         <button
           type="button"
