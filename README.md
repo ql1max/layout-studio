@@ -1,6 +1,6 @@
-# Product Sheet Creator
+# Layout Studio
 
-A print-aware document builder for product one-pagers. Millimeter-accurate A4 and Letter pages rendered in the browser, with swappable templates, theme tokens, and print-ready PDF export.
+A browser-based document layout studio. Grid-snapped components on millimeter-accurate pages, with a pan and zoom canvas, brand checking, and print-ready output with bleed and crop marks.
 
 ## Stack
 
