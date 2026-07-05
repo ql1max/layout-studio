@@ -1,6 +1,44 @@
 import { fontLibrary } from './model';
 import type { Doc } from './model';
 
+/* CMYK soft proof: flag very saturated, very bright RGB colors that
+   typically shift when converted to CMYK. A heuristic, not color
+   management - browsers can only output RGB. */
+
+function hexChannels(hex: string): [number, number, number] {
+  const value = hex.replace('#', '');
+  const full =
+    value.length === 3
+      ? value
+          .split('')
+          .map((c) => c + c)
+          .join('')
+      : value;
+  const num = Number.parseInt(full, 16);
+  return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+}
+
+export function cmykRisky(hex: string): boolean {
+  const [r, g, b] = hexChannels(hex);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  return max - min > 170 && max > 215;
+}
+
+export function collectColors(doc: Doc): string[] {
+  const colors = new Set<string>();
+  for (const page of doc.pages) {
+    colors.add(page.background.toLowerCase());
+    for (const item of page.items) {
+      if (item.kind === 'text' || item.kind === 'table') {
+        colors.add(item.color.toLowerCase());
+      }
+      if (item.kind === 'shape') colors.add(item.fill.toLowerCase());
+    }
+  }
+  return [...colors];
+}
+
 export type Violation = {
   pageIndex: number;
   itemId?: string;

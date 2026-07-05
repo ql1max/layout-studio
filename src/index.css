@@ -368,6 +368,25 @@ body {
   color: #7ee2a8;
 }
 
+.hint--warn {
+  color: #e2c97e;
+  margin-bottom: 0.5rem;
+}
+
+.file-button {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+}
+
+.file-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
 .chip-row {
   display: flex;
   flex-wrap: wrap;
@@ -696,6 +715,25 @@ body {
   display: none;
 }
 
+.print-sheet {
+  position: relative;
+  background: #fff;
+}
+
+.print-bleed {
+  position: absolute;
+  overflow: hidden;
+}
+
+.print-trim {
+  position: absolute;
+}
+
+.crop-mark {
+  position: absolute;
+  background: #000;
+}
+
 @media print {
   body {
     overflow: visible;
@@ -708,6 +746,11 @@ body {
 
   .print-layer {
     display: block;
+  }
+
+  .print-sheet {
+    page-break-after: always;
+    break-after: page;
   }
 
   .print-layer .page {

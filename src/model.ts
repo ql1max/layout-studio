@@ -82,14 +82,22 @@ export type BrandKit = {
   minBodyPt: number;
 };
 
+export type OutputSettings = {
+  bleedMm: number;
+  cropMarks: boolean;
+};
+
 export type Doc = {
   name: string;
   format: PageFormat;
   grid: GridSettings;
   overlay: GridOverlay;
   brand: BrandKit;
+  output: OutputSettings;
   pages: Page[];
 };
+
+export const defaultOutput: OutputSettings = { bleedMm: 0, cropMarks: false };
 
 /* ── Geometry ────────────────────────────────────────────── */
 
@@ -348,6 +356,7 @@ function auroraSheet(): Doc {
     grid: { ...defaultGrid },
     overlay: 'none',
     brand: { ...defaultBrand, colors: [...defaultBrand.colors] },
+    output: { ...defaultOutput },
     pages: [{ id: newId(), background: '#ffffff', items }],
   };
 }
@@ -397,6 +406,7 @@ function studioPoster(): Doc {
     grid: { ...defaultGrid },
     overlay: 'none',
     brand: { ...defaultBrand, colors: [...defaultBrand.colors] },
+    output: { ...defaultOutput },
     pages: [{ id: newId(), background: '#f4f4f2', items }],
   };
 }
@@ -408,6 +418,7 @@ function blankDoc(): Doc {
     grid: { ...defaultGrid },
     overlay: 'columns',
     brand: { ...defaultBrand, colors: [...defaultBrand.colors] },
+    output: { ...defaultOutput },
     pages: [{ id: newId(), background: '#ffffff', items: [] }],
   };
 }
@@ -428,6 +439,7 @@ export function loadDoc(): Doc | null {
     if (!raw) return null;
     const doc = JSON.parse(raw) as Doc;
     if (!doc.pages?.length || !doc.grid || !doc.format) return null;
+    if (!doc.output) doc.output = { ...defaultOutput };
     return doc;
   } catch {
     return null;

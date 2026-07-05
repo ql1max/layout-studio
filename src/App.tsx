@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
-import { checkBrand } from './brand';
+import { checkBrand, cmykRisky, collectColors } from './brand';
 import { CanvasView, PageView } from './Canvas';
 import type { Selection } from './Canvas';
 import {
   MM,
   clampFrame,
+  defaultOutput,
   fontLibrary,
   loadDoc,
   makeImage,
@@ -90,6 +91,7 @@ export default function App() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedPageId, setSelectedPageId] = useState<string>(doc.pages[0].id);
   const [pendingColor, setPendingColor] = useState('#4a7dff');
+  const [printRange, setPrintRange] = useState<'current' | 'all'>('current');
   const [, setHistoryTick] = useState(0);
 
   const docRef = useRef(doc);
@@ -410,6 +412,64 @@ export default function App() {
   const thumbScale = (format: PageFormat) => 88 / (pageFormats[format].heightMm * MM);
 
   const violations = checkBrand(doc);
+  const riskyColors = collectColors(doc).filter(cmykRisky);
+
+  /* JSON export / import */
+
+  const exportJson = () => {
+    const blob = new Blob([JSON.stringify(doc, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `${doc.name.replace(/[^a-z0-9-_ ]/gi, '').trim() || 'document'}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importJson = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const next = JSON.parse(String(reader.result)) as Doc;
+        if (!next.pages?.length || !next.grid || !next.format) return;
+        if (!next.output) next.output = { ...defaultOutput };
+        commit(reclampDoc(next));
+        setSelectedPageId(next.pages[0].id);
+        setSelection(null);
+      } catch {
+        // invalid file; ignore
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  };
+
+  /* Print sheet geometry */
+
+  const markSpaceMm = doc.output.cropMarks ? 6 : 0;
+  const bleedMm = doc.output.bleedMm;
+  const printFormat = pageFormats[doc.format];
+  const sheetW = printFormat.widthMm + 2 * (bleedMm + markSpaceMm);
+  const sheetH = printFormat.heightMm + 2 * (bleedMm + markSpaceMm);
+  const trimOffset = markSpaceMm + bleedMm;
+  const printPages = printRange === 'all' ? doc.pages : [focusPage];
+
+  const cropMarkStyles = doc.output.cropMarks
+    ? ([
+        { left: 0, top: `${trimOffset}mm`, width: '4mm', height: '0.25mm' },
+        { right: 0, top: `${trimOffset}mm`, width: '4mm', height: '0.25mm' },
+        { left: 0, bottom: `${trimOffset}mm`, width: '4mm', height: '0.25mm' },
+        { right: 0, bottom: `${trimOffset}mm`, width: '4mm', height: '0.25mm' },
+        { top: 0, left: `${trimOffset}mm`, height: '4mm', width: '0.25mm' },
+        { top: 0, right: `${trimOffset}mm`, height: '4mm', width: '0.25mm' },
+        { bottom: 0, left: `${trimOffset}mm`, height: '4mm', width: '0.25mm' },
+        { bottom: 0, right: `${trimOffset}mm`, height: '4mm', width: '0.25mm' },
+      ] as const)
+    : [];
 
   return (
     <div className="studio">
@@ -784,6 +844,59 @@ export default function App() {
               </section>
 
               <section>
+                <h2>Output</h2>
+                <Field label="Bleed (mm)">
+                  <NumInput
+                    value={doc.output.bleedMm}
+                    min={0}
+                    max={5}
+                    step={0.5}
+                    onCommit={(bleedMm) =>
+                      setDocProps({ output: { ...doc.output, bleedMm } })
+                    }
+                  />
+                </Field>
+                <label className="check-row">
+                  <input
+                    type="checkbox"
+                    checked={doc.output.cropMarks}
+                    onChange={(event) =>
+                      setDocProps({
+                        output: { ...doc.output, cropMarks: event.target.checked },
+                      })
+                    }
+                  />
+                  Crop marks
+                </label>
+                <Field label="Print range">
+                  <select
+                    value={printRange}
+                    onChange={(event) =>
+                      setPrintRange(event.target.value as 'current' | 'all')
+                    }
+                  >
+                    <option value="current">Current page</option>
+                    <option value="all">All pages</option>
+                  </select>
+                </Field>
+                {riskyColors.length > 0 && (
+                  <p className="hint hint--warn">
+                    CMYK soft proof: {riskyColors.join(', ')} may shift in
+                    print. Browsers export RGB; convert in prepress.
+                  </p>
+                )}
+                <div className="button-row">
+                  <button type="button" className="ghost-button" onClick={exportJson}>
+                    Save .json
+                  </button>
+                  <label className="ghost-button file-button">
+                    Open .json
+                    <input type="file" accept="application/json" onChange={importJson} />
+                  </label>
+                </div>
+              </section>
+
+              <section>
                 <h2>Help</h2>
                 <p className="hint">
                   Scroll to pan, Ctrl + scroll to zoom. Drag items to move them
@@ -1086,8 +1199,35 @@ export default function App() {
       </footer>
 
       <div className="print-layer" aria-hidden="true">
-        <style>{`@page { size: ${pageFormats[doc.format].cssSize}; margin: 0; }`}</style>
-        <PageView doc={doc} page={focusPage} />
+        <style>{`@page { size: ${sheetW}mm ${sheetH}mm; margin: 0; }`}</style>
+        {printPages.map((page) => (
+          <div
+            key={page.id}
+            className="print-sheet"
+            style={{ width: `${sheetW}mm`, height: `${sheetH}mm` }}
+          >
+            <div
+              className="print-bleed"
+              style={{
+                left: `${markSpaceMm}mm`,
+                top: `${markSpaceMm}mm`,
+                width: `${printFormat.widthMm + 2 * bleedMm}mm`,
+                height: `${printFormat.heightMm + 2 * bleedMm}mm`,
+                background: page.background,
+              }}
+            >
+              <div
+                className="print-trim"
+                style={{ left: `${bleedMm}mm`, top: `${bleedMm}mm` }}
+              >
+                <PageView doc={doc} page={page} />
+              </div>
+            </div>
+            {cropMarkStyles.map((mark, index) => (
+              <span key={index} className="crop-mark" style={mark} />
+            ))}
+          </div>
+        ))}
       </div>
     </div>
   );
