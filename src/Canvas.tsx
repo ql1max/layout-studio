@@ -226,6 +226,7 @@ type PageInteraction = {
     event: ReactPointerEvent,
   ) => void;
   onItemDoubleClick: (page: Page, item: Item) => void;
+  onItemContextMenu: (page: Page, item: Item, x: number, y: number) => void;
   onTextCommit: (page: Page, item: Item, text: string) => void;
   onCellCommit: (
     page: Page,
@@ -337,16 +338,36 @@ export function PageView({
             onDoubleClick={
               interaction ? () => interaction.onItemDoubleClick(page, item) : undefined
             }
+            onContextMenu={
+              interaction
+                ? (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    interaction.onItemContextMenu(page, item, event.clientX, event.clientY);
+                  }
+                : undefined
+            }
           >
-            <ItemBody
-              item={item}
-              baselineMm={doc.grid.baselineMm}
-              editing={Boolean(editing)}
-              onTextCommit={(text) => interaction?.onTextCommit(page, item, text)}
-              onCellCommit={(rowIndex, field, text) =>
-                interaction?.onCellCommit(page, item, rowIndex, field, text)
+            <div
+              className="item-flip"
+              style={
+                item.flipH || item.flipV
+                  ? {
+                      transform: `scale(${item.flipH ? -1 : 1}, ${item.flipV ? -1 : 1})`,
+                    }
+                  : undefined
               }
-            />
+            >
+              <ItemBody
+                item={item}
+                baselineMm={doc.grid.baselineMm}
+                editing={Boolean(editing)}
+                onTextCommit={(text) => interaction?.onTextCommit(page, item, text)}
+                onCellCommit={(rowIndex, field, text) =>
+                  interaction?.onCellCommit(page, item, rowIndex, field, text)
+                }
+              />
+            </div>
 
             {selected && interaction && (
               <span
@@ -432,6 +453,7 @@ export function CanvasView({
   onTextCommit,
   onCellCommit,
   onAddPage,
+  onItemContextMenu,
   focusPageIndex,
 }: {
   doc: Doc;
@@ -451,6 +473,7 @@ export function CanvasView({
     text: string,
   ) => void;
   onAddPage: () => void;
+  onItemContextMenu: (pageId: string, itemId: string, x: number, y: number) => void;
   focusPageIndex: number;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -606,6 +629,10 @@ export function CanvasView({
         startY: event.clientY,
         startFrame: { ...item.frame },
       });
+    },
+    onItemContextMenu: (page, item, x, y) => {
+      onSelect({ pageId: page.id, itemId: item.id });
+      onItemContextMenu(page.id, item.id, x, y);
     },
     onItemDoubleClick: (page, item) => {
       if (item.kind === 'text' || item.kind === 'table') {

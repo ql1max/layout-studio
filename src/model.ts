@@ -46,7 +46,7 @@ export const fontMetrics: Record<FontId, { ascent: number; descent: number }> = 
 
 export const PT_TO_MM = 25.4 / 72;
 
-type ItemBase = { id: string; frame: Frame };
+type ItemBase = { id: string; frame: Frame; flipH?: boolean; flipV?: boolean };
 
 export type TextItem = ItemBase & {
   kind: 'text';

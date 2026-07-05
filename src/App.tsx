@@ -92,6 +92,7 @@ export default function App() {
   const [selectedPageId, setSelectedPageId] = useState<string>(doc.pages[0].id);
   const [pendingColor, setPendingColor] = useState('#4a7dff');
   const [printRange, setPrintRange] = useState<'current' | 'all'>('current');
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [, setHistoryTick] = useState(0);
 
   const docRef = useRef(doc);
@@ -279,6 +280,27 @@ export default function App() {
     if (selection) reorderItem(selection.pageId, selection.itemId, direction);
   };
 
+  const sendToExtreme = (front: boolean) => {
+    if (!selection) return;
+    commit({
+      ...docRef.current,
+      pages: docRef.current.pages.map((page) => {
+        if (page.id !== selection.pageId) return page;
+        const index = page.items.findIndex((item) => item.id === selection.itemId);
+        if (index < 0) return page;
+        const items = [...page.items];
+        const [moved] = items.splice(index, 1);
+        if (front) items.push(moved);
+        else items.unshift(moved);
+        return { ...page, items };
+      }),
+    });
+  };
+
+  const flipSelected = (axis: 'flipH' | 'flipV') => {
+    updateSelected((item) => ({ ...item, [axis]: !item[axis] }));
+  };
+
   const layerName = (item: Item): string => {
     if (item.kind === 'text') {
       const words = item.text.replace(/\s+/g, ' ').trim();
@@ -368,6 +390,27 @@ export default function App() {
       }
       if (event.key === 'Escape') {
         setSelection(null);
+        setCtxMenu(null);
+        return;
+      }
+      if (event.key === ']') {
+        event.preventDefault();
+        sendToExtreme(true);
+        return;
+      }
+      if (event.key === '[') {
+        event.preventDefault();
+        sendToExtreme(false);
+        return;
+      }
+      if (event.shiftKey && event.key.toLowerCase() === 'h') {
+        event.preventDefault();
+        flipSelected('flipH');
+        return;
+      }
+      if (event.shiftKey && event.key.toLowerCase() === 'v') {
+        event.preventDefault();
+        flipSelected('flipV');
         return;
       }
 
@@ -697,8 +740,49 @@ export default function App() {
             )
           }
           onAddPage={addPage}
+          onItemContextMenu={(_pageId, _itemId, x, y) => setCtxMenu({ x, y })}
           focusPageIndex={focusPageIndex}
         />
+
+        {ctxMenu && (
+          <div
+            className="context-backdrop"
+            onPointerDown={() => setCtxMenu(null)}
+            onContextMenu={(event) => {
+              event.preventDefault();
+              setCtxMenu(null);
+            }}
+          >
+            <div
+              className="context-menu"
+              style={{ left: ctxMenu.x, top: ctxMenu.y }}
+              onPointerDown={(event) => event.stopPropagation()}
+            >
+              {(
+                [
+                  ['Bring to front', ']', () => sendToExtreme(true)],
+                  ['Send to back', '[', () => sendToExtreme(false)],
+                  ['Flip horizontal', 'Shift H', () => flipSelected('flipH')],
+                  ['Flip vertical', 'Shift V', () => flipSelected('flipV')],
+                  ['Duplicate', 'Ctrl D', duplicateSelected],
+                  ['Delete', 'Del', deleteSelected],
+                ] as const
+              ).map(([label, key, action]) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => {
+                    action();
+                    setCtxMenu(null);
+                  }}
+                >
+                  {label}
+                  <kbd>{key}</kbd>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <aside className="inspector">
           {!selectedItem && (
