@@ -1,320 +1,979 @@
-import { useState } from 'react';
-import type { CSSProperties } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { ChangeEvent, ReactNode } from 'react';
+import { CanvasView, PageView } from './Canvas';
+import type { Selection } from './Canvas';
 import {
+  MM,
+  clampFrame,
+  fontLibrary,
+  loadDoc,
+  makeImage,
+  makeShape,
+  makeTable,
+  makeText,
+  newId,
   pageFormats,
-  products,
-  themes,
-} from './sheets';
-import type { HeroMotif, PageFormat, ProductSheet, SheetTheme } from './sheets';
+  saveDoc,
+  templates,
+} from './model';
+import type {
+  Doc,
+  FontId,
+  Frame,
+  GridOverlay,
+  Item,
+  Page,
+  PageFormat,
+} from './model';
 import './index.css';
 
-const zoomLevels = [50, 65, 80, 100] as const;
+const HISTORY_LIMIT = 60;
 
-function HeroVisual({ motif }: { motif: HeroMotif }) {
-  if (motif === 'arcs') {
-    return (
-      <svg className="hero-svg" viewBox="0 0 600 190" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <circle
-            key={i}
-            cx="470"
-            cy="200"
-            r={40 + i * 34}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={i === 2 ? 3 : 1.25}
-            opacity={0.9 - i * 0.13}
-          />
-        ))}
-        <circle cx="470" cy="200" r="14" fill="currentColor" />
-      </svg>
-    );
-  }
+function reclampDoc(doc: Doc): Doc {
+  return {
+    ...doc,
+    pages: doc.pages.map((page) => ({
+      ...page,
+      items: page.items.map((item) => ({
+        ...item,
+        frame: clampFrame(item.frame, doc.format, doc.grid),
+      })),
+    })),
+  };
+}
 
-  if (motif === 'dots') {
-    const dots = [];
-    for (let row = 0; row < 6; row += 1) {
-      for (let col = 0; col < 20; col += 1) {
-        dots.push(
-          <circle
-            key={`${row}-${col}`}
-            cx={24 + col * 30}
-            cy={26 + row * 28}
-            r={1.2 + ((row + col) % 5) * 1.1}
-            fill="currentColor"
-            opacity={0.35 + ((col + row) % 4) * 0.18}
-          />,
-        );
-      }
-    }
-    return (
-      <svg className="hero-svg" viewBox="0 0 600 190" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-        {dots}
-      </svg>
-    );
-  }
+/* ── Small form controls ─────────────────────────────────── */
 
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <svg className="hero-svg" viewBox="0 0 600 190" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      {[0, 1, 2, 3].map((i) => (
-        <path
-          key={i}
-          d={`M -10 ${70 + i * 24} C 120 ${20 + i * 24}, 240 ${120 + i * 24}, 360 ${64 + i * 24} S 560 ${100 + i * 24}, 620 ${58 + i * 24}`}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={i === 1 ? 2.5 : 1.25}
-          opacity={0.85 - i * 0.18}
-        />
-      ))}
-    </svg>
+    <label className="field">
+      <span className="field__label">{label}</span>
+      {children}
+    </label>
   );
 }
 
-function Sheet({
-  product,
-  theme,
-  format,
-  showGuides,
+function NumInput({
+  value,
+  min,
+  max,
+  step = 1,
+  onCommit,
 }: {
-  product: ProductSheet;
-  theme: SheetTheme;
-  format: PageFormat;
-  showGuides: boolean;
+  value: number;
+  min: number;
+  max: number;
+  step?: number;
+  onCommit: (next: number) => void;
 }) {
-  const geometry = pageFormats[format];
-  const sheetVars = {
-    '--ps-page': theme.page,
-    '--ps-panel': theme.panel,
-    '--ps-text': theme.text,
-    '--ps-muted': theme.muted,
-    '--ps-accent': theme.accent,
-    '--ps-accent-ink': theme.accentInk,
-    '--ps-rule': theme.rule,
-    '--ps-heading-font':
-      theme.headingFont === 'serif'
-        ? "Georgia, 'Times New Roman', serif"
-        : 'inherit',
-    width: `${geometry.widthMm}mm`,
-    height: `${geometry.heightMm}mm`,
-  } as CSSProperties;
-
   return (
-    <div className="sheet" style={sheetVars}>
-      {showGuides && <div className="sheet__guides" aria-hidden="true" />}
-
-      <header className="ps-masthead">
-        <span className="ps-brand">{product.brand}</span>
-        <span className="ps-meta">
-          {product.category} · {product.sku}
-        </span>
-      </header>
-
-      <div className="ps-title">
-        <h2>{product.name}</h2>
-        <p>{product.tagline}</p>
-      </div>
-
-      <div className="ps-hero">
-        <HeroVisual motif={product.heroMotif} />
-      </div>
-
-      <div className="ps-body">
-        <div className="ps-main">
-          <p className="ps-intro">{product.intro}</p>
-          <div className="ps-features">
-            {product.features.map((feature) => (
-              <div className="ps-feature" key={feature.title}>
-                <h3>{feature.title}</h3>
-                <p>{feature.body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <aside className="ps-side">
-          <h3 className="ps-side__heading">Specifications</h3>
-          <dl className="ps-specs">
-            {product.specs.map((spec) => (
-              <div key={spec.label}>
-                <dt>{spec.label}</dt>
-                <dd>{spec.value}</dd>
-              </div>
-            ))}
-          </dl>
-          <div className="ps-price">
-            <span className="ps-price__label">{product.price.label}</span>
-            <span className="ps-price__value">{product.price.value}</span>
-            <span className="ps-price__note">{product.price.note}</span>
-          </div>
-        </aside>
-      </div>
-
-      <footer className="ps-footer">
-        <span>{product.contact.company}</span>
-        <span>
-          {product.contact.web} · {product.contact.email}
-        </span>
-      </footer>
-    </div>
+    <input
+      type="number"
+      value={value}
+      min={min}
+      max={max}
+      step={step}
+      onChange={(event) => {
+        const next = Number(event.target.value);
+        if (Number.isFinite(next)) onCommit(Math.min(max, Math.max(min, next)));
+      }}
+    />
   );
 }
+
+/* ── App ─────────────────────────────────────────────────── */
 
 export default function App() {
-  const [productId, setProductId] = useState(products[0].id);
-  const [themeName, setThemeName] = useState(themes[0].name);
-  const [format, setFormat] = useState<PageFormat>('a4');
-  const [zoom, setZoom] = useState<(typeof zoomLevels)[number]>(65);
-  const [showGuides, setShowGuides] = useState(false);
+  const [doc, setDoc] = useState<Doc>(() => loadDoc() ?? templates[0].make());
+  const [selection, setSelection] = useState<Selection>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedPageId, setSelectedPageId] = useState<string>(doc.pages[0].id);
+  const [, setHistoryTick] = useState(0);
 
-  const product = products.find((p) => p.id === productId) ?? products[0];
-  const theme = themes.find((t) => t.name === themeName) ?? themes[0];
-  const geometry = pageFormats[format];
+  const docRef = useRef(doc);
+  docRef.current = doc;
+  const pastRef = useRef<Doc[]>([]);
+  const futureRef = useRef<Doc[]>([]);
+  const txnRef = useRef<Doc | null>(null);
+
+  const focusPageIndex = Math.max(
+    0,
+    doc.pages.findIndex((page) => page.id === selectedPageId),
+  );
+  const focusPage = doc.pages[focusPageIndex];
+
+  /* History */
+
+  const bump = () => setHistoryTick((tick) => tick + 1);
+
+  const commit = (next: Doc) => {
+    pastRef.current.push(docRef.current);
+    if (pastRef.current.length > HISTORY_LIMIT) pastRef.current.shift();
+    futureRef.current = [];
+    setDoc(next);
+    bump();
+  };
+
+  const beginTransaction = () => {
+    txnRef.current = docRef.current;
+  };
+
+  const endTransaction = () => {
+    if (txnRef.current && txnRef.current !== docRef.current) {
+      pastRef.current.push(txnRef.current);
+      if (pastRef.current.length > HISTORY_LIMIT) pastRef.current.shift();
+      futureRef.current = [];
+      bump();
+    }
+    txnRef.current = null;
+  };
+
+  const undo = () => {
+    const prev = pastRef.current.pop();
+    if (!prev) return;
+    futureRef.current.push(docRef.current);
+    setDoc(prev);
+    setEditingId(null);
+    bump();
+  };
+
+  const redo = () => {
+    const next = futureRef.current.pop();
+    if (!next) return;
+    pastRef.current.push(docRef.current);
+    setDoc(next);
+    setEditingId(null);
+    bump();
+  };
+
+  /* Autosave */
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => saveDoc(doc), 400);
+    return () => window.clearTimeout(handle);
+  }, [doc]);
+
+  /* Document mutation helpers */
+
+  const mutateItem = (
+    pageId: string,
+    itemId: string,
+    mutate: (item: Item) => Item,
+    withHistory: boolean,
+  ) => {
+    const current = docRef.current;
+    const next: Doc = {
+      ...current,
+      pages: current.pages.map((page) =>
+        page.id === pageId
+          ? {
+              ...page,
+              items: page.items.map((item) =>
+                item.id === itemId ? mutate(item) : item,
+              ),
+            }
+          : page,
+      ),
+    };
+    if (withHistory) commit(next);
+    else setDoc(next);
+  };
+
+  const selectedItem: Item | null = selection
+    ? (doc.pages
+        .find((page) => page.id === selection.pageId)
+        ?.items.find((item) => item.id === selection.itemId) ?? null)
+    : null;
+
+  const updateSelected = (mutate: (item: Item) => Item) => {
+    if (selection) mutateItem(selection.pageId, selection.itemId, mutate, true);
+  };
+
+  const addItem = (kind: Item['kind']) => {
+    const page = focusPage;
+    const stagger = (page.items.length * 2) % 20;
+    const frames: Record<Item['kind'], Frame> = {
+      text: { col: 0, row: stagger, colSpan: 6, rowSpan: 4 },
+      shape: { col: 0, row: stagger, colSpan: 4, rowSpan: 8 },
+      image: { col: 0, row: stagger, colSpan: 6, rowSpan: 14 },
+      table: { col: 0, row: stagger, colSpan: 5, rowSpan: 8 },
+    };
+    const frame = clampFrame(frames[kind], doc.format, doc.grid);
+    const item: Item =
+      kind === 'text'
+        ? makeText({ frame, text: 'New text' })
+        : kind === 'shape'
+          ? makeShape({ frame, fill: doc.brand.colors[0] ?? '#141414' })
+          : kind === 'image'
+            ? makeImage({ frame })
+            : makeTable({ frame });
+
+    commit({
+      ...docRef.current,
+      pages: docRef.current.pages.map((p) =>
+        p.id === page.id ? { ...p, items: [...p.items, item] } : p,
+      ),
+    });
+    setSelection({ pageId: page.id, itemId: item.id });
+  };
+
+  const deleteSelected = () => {
+    if (!selection) return;
+    commit({
+      ...docRef.current,
+      pages: docRef.current.pages.map((page) =>
+        page.id === selection.pageId
+          ? { ...page, items: page.items.filter((item) => item.id !== selection.itemId) }
+          : page,
+      ),
+    });
+    setSelection(null);
+    setEditingId(null);
+  };
+
+  const duplicateSelected = () => {
+    if (!selection || !selectedItem) return;
+    const copy: Item = {
+      ...structuredClone(selectedItem),
+      id: newId(),
+      frame: clampFrame(
+        {
+          ...selectedItem.frame,
+          col: selectedItem.frame.col + 1,
+          row: selectedItem.frame.row + 2,
+        },
+        doc.format,
+        doc.grid,
+      ),
+    };
+    commit({
+      ...docRef.current,
+      pages: docRef.current.pages.map((page) =>
+        page.id === selection.pageId ? { ...page, items: [...page.items, copy] } : page,
+      ),
+    });
+    setSelection({ pageId: selection.pageId, itemId: copy.id });
+  };
+
+  const reorderSelected = (direction: 1 | -1) => {
+    if (!selection) return;
+    commit({
+      ...docRef.current,
+      pages: docRef.current.pages.map((page) => {
+        if (page.id !== selection.pageId) return page;
+        const index = page.items.findIndex((item) => item.id === selection.itemId);
+        const target = index + direction;
+        if (index < 0 || target < 0 || target >= page.items.length) return page;
+        const items = [...page.items];
+        const [moved] = items.splice(index, 1);
+        items.splice(target, 0, moved);
+        return { ...page, items };
+      }),
+    });
+  };
+
+  /* Pages */
+
+  const addPage = () => {
+    const page: Page = { id: newId(), background: focusPage.background, items: [] };
+    commit({ ...docRef.current, pages: [...docRef.current.pages, page] });
+    setSelectedPageId(page.id);
+    setSelection(null);
+  };
+
+  const duplicatePage = (pageId: string) => {
+    const source = docRef.current.pages.find((page) => page.id === pageId);
+    if (!source) return;
+    const copy: Page = {
+      id: newId(),
+      background: source.background,
+      items: source.items.map((item) => ({ ...structuredClone(item), id: newId() })),
+    };
+    const index = docRef.current.pages.findIndex((page) => page.id === pageId);
+    const pages = [...docRef.current.pages];
+    pages.splice(index + 1, 0, copy);
+    commit({ ...docRef.current, pages });
+    setSelectedPageId(copy.id);
+  };
+
+  const deletePage = (pageId: string) => {
+    if (docRef.current.pages.length <= 1) return;
+    const pages = docRef.current.pages.filter((page) => page.id !== pageId);
+    commit({ ...docRef.current, pages });
+    if (selectedPageId === pageId) setSelectedPageId(pages[0].id);
+    if (selection?.pageId === pageId) setSelection(null);
+  };
+
+  /* Keyboard shortcuts */
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      if (
+        editingId ||
+        target.tagName === 'INPUT' ||
+        target.tagName === 'SELECT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        if (event.shiftKey) redo();
+        else undo();
+        return;
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'y') {
+        event.preventDefault();
+        redo();
+        return;
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') {
+        event.preventDefault();
+        duplicateSelected();
+        return;
+      }
+
+      if (!selection || !selectedItem) return;
+
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        event.preventDefault();
+        deleteSelected();
+        return;
+      }
+      if (event.key === 'Escape') {
+        setSelection(null);
+        return;
+      }
+
+      const arrows: Record<string, [number, number]> = {
+        ArrowLeft: [-1, 0],
+        ArrowRight: [1, 0],
+        ArrowUp: [0, -1],
+        ArrowDown: [0, 1],
+      };
+      const delta = arrows[event.key];
+      if (!delta) return;
+      event.preventDefault();
+      const frame = { ...selectedItem.frame };
+      if (event.shiftKey) {
+        frame.colSpan += delta[0];
+        frame.rowSpan += delta[1];
+      } else {
+        frame.col += delta[0];
+        frame.row += delta[1];
+      }
+      updateSelected((item) => ({
+        ...item,
+        frame: clampFrame(frame, docRef.current.format, docRef.current.grid),
+      }));
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  });
+
+  /* Image upload */
+
+  const onImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !selection) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      updateSelected((item) =>
+        item.kind === 'image' ? { ...item, src: String(reader.result) } : item,
+      );
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  };
+
+  /* Doc-level settings */
+
+  const setDocProps = (props: Partial<Doc>) => {
+    commit(reclampDoc({ ...docRef.current, ...props }));
+  };
+
+  const loadTemplate = (templateId: string) => {
+    const template = templates.find((t) => t.id === templateId);
+    if (!template) return;
+    const next = template.make();
+    commit(next);
+    setSelectedPageId(next.pages[0].id);
+    setSelection(null);
+  };
+
+  const thumbScale = (format: PageFormat) => 88 / (pageFormats[format].heightMm * MM);
 
   return (
-    <div className="app">
-      <style>{`@page { size: ${geometry.cssSize}; margin: 0; }`}</style>
-
+    <div className="studio">
       <header className="topbar">
-        <div>
-          <h1>Product Sheet Creator</h1>
-          <p>
-            A millimeter-accurate {geometry.label} page, rendered by the
-            browser and ready for print.
-          </p>
+        <div className="topbar__left">
+          <span className="topbar__logo">Layout Studio</span>
+          <input
+            className="topbar__name"
+            value={doc.name}
+            onChange={(event) => setDoc({ ...doc, name: event.target.value })}
+            aria-label="Document name"
+          />
         </div>
-        <button type="button" className="print-button" onClick={() => window.print()}>
-          Export PDF
-        </button>
+        <div className="topbar__right">
+          <button
+            type="button"
+            className="ghost-button"
+            onClick={undo}
+            disabled={pastRef.current.length === 0}
+          >
+            Undo
+          </button>
+          <button
+            type="button"
+            className="ghost-button"
+            onClick={redo}
+            disabled={futureRef.current.length === 0}
+          >
+            Redo
+          </button>
+          <button type="button" className="print-button" onClick={() => window.print()}>
+            Export PDF
+          </button>
+        </div>
       </header>
 
-      <div className="layout">
-        <aside className="controls">
-          <section aria-labelledby="template-heading">
-            <h2 id="template-heading">Template</h2>
-            <div className="option-list" role="group" aria-label="Template">
-              {products.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className={`option ${p.id === productId ? 'is-active' : ''}`}
-                  onClick={() => setProductId(p.id)}
+      <div className="studio__body">
+        <aside className="rail">
+          <section>
+            <h2>Pages</h2>
+            <div className="thumbs">
+              {doc.pages.map((page, index) => (
+                <div
+                  key={page.id}
+                  className={`thumb ${page.id === selectedPageId ? 'is-active' : ''}`}
                 >
-                  <span>{p.name}</span>
-                  <small>{p.category}</small>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section aria-labelledby="theme-heading">
-            <h2 id="theme-heading">Theme</h2>
-            <div className="swatch-row" role="group" aria-label="Theme">
-              {themes.map((t) => (
-                <button
-                  key={t.name}
-                  type="button"
-                  className={`swatch ${t.name === themeName ? 'is-active' : ''}`}
-                  onClick={() => setThemeName(t.name)}
-                  aria-label={`Theme: ${t.name}`}
-                  title={t.name}
-                >
-                  <span
-                    className="swatch__chip"
-                    style={{ background: t.page, borderColor: t.rule }}
+                  <button
+                    type="button"
+                    className="thumb__preview"
+                    onClick={() => {
+                      setSelectedPageId(page.id);
+                      setSelection(null);
+                    }}
+                    aria-label={`Go to page ${index + 1}`}
                   >
-                    <span style={{ background: t.accent }} />
-                  </span>
-                  {t.name}
-                </button>
+                    <span
+                      className="thumb__page"
+                      style={{
+                        width: pageFormats[doc.format].widthMm * MM * thumbScale(doc.format),
+                        height: 88,
+                      }}
+                    >
+                      <span
+                        className="thumb__page-inner"
+                        style={{ transform: `scale(${thumbScale(doc.format)})` }}
+                      >
+                        <PageView doc={doc} page={page} />
+                      </span>
+                    </span>
+                  </button>
+                  <div className="thumb__meta">
+                    <span>{index + 1}</span>
+                    <span className="thumb__actions">
+                      <button type="button" onClick={() => duplicatePage(page.id)}>
+                        Dup
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deletePage(page.id)}
+                        disabled={doc.pages.length <= 1}
+                      >
+                        Del
+                      </button>
+                    </span>
+                  </div>
+                </div>
               ))}
+              <button type="button" className="thumb__add" onClick={addPage}>
+                + Add page
+              </button>
             </div>
           </section>
 
-          <section aria-labelledby="format-heading">
-            <h2 id="format-heading">Page</h2>
-            <div className="segmented" role="group" aria-label="Page format">
-              {(Object.keys(pageFormats) as PageFormat[]).map((key) => (
+          <section>
+            <h2>Insert</h2>
+            <div className="palette">
+              <button type="button" onClick={() => addItem('text')}>
+                <strong>Aa</strong> Text
+              </button>
+              <button type="button" onClick={() => addItem('shape')}>
+                <strong>▬</strong> Shape
+              </button>
+              <button type="button" onClick={() => addItem('image')}>
+                <strong>▣</strong> Image
+              </button>
+              <button type="button" onClick={() => addItem('table')}>
+                <strong>☰</strong> Table
+              </button>
+            </div>
+          </section>
+
+          <section>
+            <h2>Templates</h2>
+            <div className="template-list">
+              {templates.map((template) => (
                 <button
-                  key={key}
+                  key={template.id}
                   type="button"
-                  className={format === key ? 'is-active' : ''}
-                  onClick={() => setFormat(key)}
+                  onClick={() => loadTemplate(template.id)}
                 >
-                  {pageFormats[key].label}
+                  {template.name}
                 </button>
               ))}
             </div>
-            <p className="dimension-note">
-              {geometry.widthMm} x {geometry.heightMm} mm
-            </p>
-
-            <label className="toggle">
-              <input
-                type="checkbox"
-                checked={showGuides}
-                onChange={(event) => setShowGuides(event.target.checked)}
-              />
-              Show 12 mm margin guides
-            </label>
-          </section>
-
-          <section aria-labelledby="zoom-heading">
-            <h2 id="zoom-heading">Zoom</h2>
-            <div className="segmented" role="group" aria-label="Zoom">
-              {zoomLevels.map((level) => (
-                <button
-                  key={level}
-                  type="button"
-                  className={zoom === level ? 'is-active' : ''}
-                  onClick={() => setZoom(level)}
-                >
-                  {level}%
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section aria-labelledby="about-heading">
-            <h2 id="about-heading">About</h2>
-            <p className="about-note">
-              Phase one of a print-aware document tool. The page is laid out in
-              physical units, so what you see at 100 percent is what the
-              printer gets. Editing and custom content are next.
-            </p>
           </section>
         </aside>
 
-        <main className="stage">
-          <div
-            className="page-scaler"
-            style={{ '--zoom': zoom / 100 } as CSSProperties}
-          >
-            <Sheet
-              product={product}
-              theme={theme}
-              format={format}
-              showGuides={showGuides}
-            />
-          </div>
-        </main>
+        <CanvasView
+          doc={doc}
+          selection={selection}
+          editingId={editingId}
+          onSelect={setSelection}
+          onEdit={setEditingId}
+          updateItemFrame={(pageId, itemId, frame) =>
+            mutateItem(pageId, itemId, (item) => ({ ...item, frame }), false)
+          }
+          beginTransaction={beginTransaction}
+          endTransaction={endTransaction}
+          onTextCommit={(pageId, itemId, text) =>
+            mutateItem(
+              pageId,
+              itemId,
+              (item) => (item.kind === 'text' ? { ...item, text } : item),
+              true,
+            )
+          }
+          onCellCommit={(pageId, itemId, rowIndex, field, text) =>
+            mutateItem(
+              pageId,
+              itemId,
+              (item) =>
+                item.kind === 'table'
+                  ? {
+                      ...item,
+                      rows: item.rows.map((row, index) =>
+                        index === rowIndex ? { ...row, [field]: text } : row,
+                      ),
+                    }
+                  : item,
+              true,
+            )
+          }
+          onAddPage={addPage}
+          focusPageIndex={focusPageIndex}
+        />
+
+        <aside className="inspector">
+          {!selectedItem && (
+            <>
+              <section>
+                <h2>Document</h2>
+                <Field label="Format">
+                  <select
+                    value={doc.format}
+                    onChange={(event) =>
+                      setDocProps({ format: event.target.value as PageFormat })
+                    }
+                  >
+                    {Object.entries(pageFormats).map(([key, format]) => (
+                      <option key={key} value={key}>
+                        {format.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Page background">
+                  <input
+                    type="color"
+                    value={focusPage.background}
+                    onChange={(event) =>
+                      commit({
+                        ...docRef.current,
+                        pages: docRef.current.pages.map((page) =>
+                          page.id === focusPage.id
+                            ? { ...page, background: event.target.value }
+                            : page,
+                        ),
+                      })
+                    }
+                  />
+                </Field>
+              </section>
+
+              <section>
+                <h2>Grid</h2>
+                <Field label="Columns">
+                  <NumInput
+                    value={doc.grid.columns}
+                    min={2}
+                    max={24}
+                    onCommit={(columns) =>
+                      setDocProps({ grid: { ...doc.grid, columns } })
+                    }
+                  />
+                </Field>
+                <Field label="Gutter (mm)">
+                  <NumInput
+                    value={doc.grid.gutterMm}
+                    min={0}
+                    max={12}
+                    step={0.5}
+                    onCommit={(gutterMm) =>
+                      setDocProps({ grid: { ...doc.grid, gutterMm } })
+                    }
+                  />
+                </Field>
+                <Field label="Margin (mm)">
+                  <NumInput
+                    value={doc.grid.marginMm}
+                    min={4}
+                    max={30}
+                    onCommit={(marginMm) =>
+                      setDocProps({ grid: { ...doc.grid, marginMm } })
+                    }
+                  />
+                </Field>
+                <Field label="Baseline (mm)">
+                  <NumInput
+                    value={doc.grid.baselineMm}
+                    min={2}
+                    max={12}
+                    step={0.5}
+                    onCommit={(baselineMm) =>
+                      setDocProps({ grid: { ...doc.grid, baselineMm } })
+                    }
+                  />
+                </Field>
+                <Field label="Overlay">
+                  <select
+                    value={doc.overlay}
+                    onChange={(event) =>
+                      setDocProps({ overlay: event.target.value as GridOverlay })
+                    }
+                  >
+                    <option value="none">None</option>
+                    <option value="columns">Columns</option>
+                    <option value="baseline">Baseline</option>
+                    <option value="modular">Modular</option>
+                  </select>
+                </Field>
+              </section>
+
+              <section>
+                <h2>Help</h2>
+                <p className="hint">
+                  Scroll to pan, Ctrl + scroll to zoom. Drag items to move them
+                  on the grid, drag the handles to resize. Double-click text to
+                  edit. Arrow keys nudge, Shift + arrows resize, Ctrl + D
+                  duplicates.
+                </p>
+              </section>
+            </>
+          )}
+
+          {selectedItem && (
+            <>
+              <section>
+                <h2>{selectedItem.kind}</h2>
+                <div className="button-row">
+                  <button type="button" className="ghost-button" onClick={duplicateSelected}>
+                    Duplicate
+                  </button>
+                  <button type="button" className="ghost-button" onClick={deleteSelected}>
+                    Delete
+                  </button>
+                </div>
+                <div className="button-row">
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => reorderSelected(1)}
+                  >
+                    Forward
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => reorderSelected(-1)}
+                  >
+                    Backward
+                  </button>
+                </div>
+                <p className="hint">
+                  Col {selectedItem.frame.col + 1}, row {selectedItem.frame.row + 1},{' '}
+                  {selectedItem.frame.colSpan} x {selectedItem.frame.rowSpan} units
+                </p>
+              </section>
+
+              {selectedItem.kind === 'text' && (
+                <section>
+                  <h2>Type</h2>
+                  <Field label="Font">
+                    <select
+                      value={selectedItem.font}
+                      onChange={(event) =>
+                        updateSelected((item) => ({
+                          ...item,
+                          font: event.target.value as FontId,
+                        }))
+                      }
+                    >
+                      {Object.entries(fontLibrary).map(([id, font]) => (
+                        <option key={id} value={id}>
+                          {font.label}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Size (pt)">
+                    <NumInput
+                      value={selectedItem.sizePt}
+                      min={5}
+                      max={120}
+                      step={0.5}
+                      onCommit={(sizePt) =>
+                        updateSelected((item) => ({ ...item, sizePt }))
+                      }
+                    />
+                  </Field>
+                  <Field label="Weight">
+                    <select
+                      value={selectedItem.weight}
+                      onChange={(event) =>
+                        updateSelected((item) => ({
+                          ...item,
+                          weight: Number(event.target.value),
+                        }))
+                      }
+                    >
+                      {[400, 500, 600, 700].map((weight) => (
+                        <option key={weight} value={weight}>
+                          {weight}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Line height">
+                    <NumInput
+                      value={selectedItem.lineHeight}
+                      min={0.9}
+                      max={2.4}
+                      step={0.05}
+                      onCommit={(lineHeight) =>
+                        updateSelected((item) => ({ ...item, lineHeight }))
+                      }
+                    />
+                  </Field>
+                  <Field label="Tracking (em)">
+                    <NumInput
+                      value={selectedItem.letterSpacing}
+                      min={-0.05}
+                      max={0.3}
+                      step={0.01}
+                      onCommit={(letterSpacing) =>
+                        updateSelected((item) => ({ ...item, letterSpacing }))
+                      }
+                    />
+                  </Field>
+                  <Field label="Align">
+                    <select
+                      value={selectedItem.align}
+                      onChange={(event) =>
+                        updateSelected((item) => ({
+                          ...item,
+                          align: event.target.value as 'left' | 'center' | 'right',
+                        }))
+                      }
+                    >
+                      <option value="left">Left</option>
+                      <option value="center">Center</option>
+                      <option value="right">Right</option>
+                    </select>
+                  </Field>
+                  <Field label="Color">
+                    <input
+                      type="color"
+                      value={selectedItem.color}
+                      onChange={(event) =>
+                        updateSelected((item) => ({ ...item, color: event.target.value }))
+                      }
+                    />
+                  </Field>
+                </section>
+              )}
+
+              {selectedItem.kind === 'shape' && (
+                <section>
+                  <h2>Shape</h2>
+                  <Field label="Kind">
+                    <select
+                      value={selectedItem.shape}
+                      onChange={(event) =>
+                        updateSelected((item) => ({
+                          ...item,
+                          shape: event.target.value as 'rectangle' | 'ellipse' | 'line',
+                        }))
+                      }
+                    >
+                      <option value="rectangle">Rectangle</option>
+                      <option value="ellipse">Ellipse</option>
+                      <option value="line">Line</option>
+                    </select>
+                  </Field>
+                  <Field label="Fill">
+                    <input
+                      type="color"
+                      value={selectedItem.fill}
+                      onChange={(event) =>
+                        updateSelected((item) => ({ ...item, fill: event.target.value }))
+                      }
+                    />
+                  </Field>
+                  <Field label="Radius (mm)">
+                    <NumInput
+                      value={selectedItem.radiusMm}
+                      min={0}
+                      max={20}
+                      step={0.5}
+                      onCommit={(radiusMm) =>
+                        updateSelected((item) => ({ ...item, radiusMm }))
+                      }
+                    />
+                  </Field>
+                </section>
+              )}
+
+              {selectedItem.kind === 'image' && (
+                <section>
+                  <h2>Image</h2>
+                  <Field label="Upload">
+                    <input type="file" accept="image/*" onChange={onImageUpload} />
+                  </Field>
+                  <Field label="Fit">
+                    <select
+                      value={selectedItem.fit}
+                      onChange={(event) =>
+                        updateSelected((item) => ({
+                          ...item,
+                          fit: event.target.value as 'cover' | 'contain',
+                        }))
+                      }
+                    >
+                      <option value="cover">Cover</option>
+                      <option value="contain">Contain</option>
+                    </select>
+                  </Field>
+                  <Field label="Treat as logo">
+                    <input
+                      type="checkbox"
+                      checked={selectedItem.isLogo}
+                      onChange={(event) =>
+                        updateSelected((item) => ({
+                          ...item,
+                          isLogo: event.target.checked,
+                        }))
+                      }
+                    />
+                  </Field>
+                </section>
+              )}
+
+              {selectedItem.kind === 'table' && (
+                <section>
+                  <h2>Table</h2>
+                  <Field label="Size (pt)">
+                    <NumInput
+                      value={selectedItem.sizePt}
+                      min={5}
+                      max={24}
+                      step={0.5}
+                      onCommit={(sizePt) =>
+                        updateSelected((item) => ({ ...item, sizePt }))
+                      }
+                    />
+                  </Field>
+                  <Field label="Color">
+                    <input
+                      type="color"
+                      value={selectedItem.color}
+                      onChange={(event) =>
+                        updateSelected((item) => ({ ...item, color: event.target.value }))
+                      }
+                    />
+                  </Field>
+                  <div className="button-row">
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={() =>
+                        updateSelected((item) =>
+                          item.kind === 'table'
+                            ? {
+                                ...item,
+                                rows: [...item.rows, { label: 'Label', value: 'Value' }],
+                              }
+                            : item,
+                        )
+                      }
+                    >
+                      Add row
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={() =>
+                        updateSelected((item) =>
+                          item.kind === 'table' && item.rows.length > 1
+                            ? { ...item, rows: item.rows.slice(0, -1) }
+                            : item,
+                        )
+                      }
+                    >
+                      Remove row
+                    </button>
+                  </div>
+                  <p className="hint">Double-click the table to edit cells.</p>
+                </section>
+              )}
+            </>
+          )}
+        </aside>
       </div>
 
-      <footer className="footer">
-        <p>
+      <footer className="statusbar">
+        <span>
+          {pageFormats[doc.format].label} · {doc.grid.columns} columns ·{' '}
+          {doc.grid.baselineMm} mm baseline
+        </span>
+        <span>
           A labs experiment by{' '}
           <a href="https://stephanosue.com" target="_blank" rel="noopener noreferrer">
             Stephano Sue
           </a>
           {' · '}
           <a
-            href="https://github.com/ql1max/product-sheet-creator"
+            href="https://github.com/ql1max/layout-studio"
             target="_blank"
             rel="noopener noreferrer"
           >
-            Source on GitHub
+            Source
           </a>
-        </p>
+        </span>
       </footer>
+
+      <div className="print-layer" aria-hidden="true">
+        <style>{`@page { size: ${pageFormats[doc.format].cssSize}; margin: 0; }`}</style>
+        <PageView doc={doc} page={focusPage} />
+      </div>
     </div>
   );
 }
