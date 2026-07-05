@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
+import { checkBrand } from './brand';
 import { CanvasView, PageView } from './Canvas';
 import type { Selection } from './Canvas';
 import {
@@ -88,6 +89,7 @@ export default function App() {
   const [selection, setSelection] = useState<Selection>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedPageId, setSelectedPageId] = useState<string>(doc.pages[0].id);
+  const [pendingColor, setPendingColor] = useState('#4a7dff');
   const [, setHistoryTick] = useState(0);
 
   const docRef = useRef(doc);
@@ -407,6 +409,8 @@ export default function App() {
 
   const thumbScale = (format: PageFormat) => 88 / (pageFormats[format].heightMm * MM);
 
+  const violations = checkBrand(doc);
+
   return (
     <div className="studio">
       <header className="topbar">
@@ -666,6 +670,117 @@ export default function App() {
                     <option value="modular">Modular</option>
                   </select>
                 </Field>
+              </section>
+
+              <section>
+                <h2>Brand kit</h2>
+                <div className="chip-row">
+                  {doc.brand.colors.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      className="chip"
+                      style={{ background: color }}
+                      title={`Remove ${color} from the palette`}
+                      onClick={() =>
+                        setDocProps({
+                          brand: {
+                            ...doc.brand,
+                            colors: doc.brand.colors.filter((c) => c !== color),
+                          },
+                        })
+                      }
+                    />
+                  ))}
+                </div>
+                <div className="button-row">
+                  <input
+                    type="color"
+                    value={pendingColor}
+                    onChange={(event) => setPendingColor(event.target.value)}
+                    aria-label="New brand color"
+                  />
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => {
+                      if (!doc.brand.colors.includes(pendingColor)) {
+                        setDocProps({
+                          brand: {
+                            ...doc.brand,
+                            colors: [...doc.brand.colors, pendingColor],
+                          },
+                        });
+                      }
+                    }}
+                  >
+                    Add color
+                  </button>
+                </div>
+                {Object.entries(fontLibrary).map(([id, font]) => (
+                  <label className="check-row" key={id}>
+                    <input
+                      type="checkbox"
+                      checked={doc.brand.fonts.includes(id as FontId)}
+                      onChange={(event) =>
+                        setDocProps({
+                          brand: {
+                            ...doc.brand,
+                            fonts: event.target.checked
+                              ? [...doc.brand.fonts, id as FontId]
+                              : doc.brand.fonts.filter((f) => f !== id),
+                          },
+                        })
+                      }
+                    />
+                    {font.label}
+                  </label>
+                ))}
+                <Field label="Min text (pt)">
+                  <NumInput
+                    value={doc.brand.minBodyPt}
+                    min={4}
+                    max={14}
+                    step={0.5}
+                    onCommit={(minBodyPt) =>
+                      setDocProps({ brand: { ...doc.brand, minBodyPt } })
+                    }
+                  />
+                </Field>
+              </section>
+
+              <section>
+                <h2>
+                  Brand check{violations.length > 0 ? ` (${violations.length})` : ''}
+                </h2>
+                {violations.length === 0 ? (
+                  <p className="hint hint--ok">
+                    Everything on the document follows the brand kit.
+                  </p>
+                ) : (
+                  <div className="violations">
+                    {violations.map((violation, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        className="violation"
+                        onClick={() => {
+                          const page = doc.pages[violation.pageIndex];
+                          if (!page) return;
+                          setSelectedPageId(page.id);
+                          setSelection(
+                            violation.itemId
+                              ? { pageId: page.id, itemId: violation.itemId }
+                              : null,
+                          );
+                        }}
+                      >
+                        <span>p.{violation.pageIndex + 1}</span>
+                        {violation.message}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </section>
 
               <section>
