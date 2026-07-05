@@ -634,6 +634,29 @@ body {
   color: var(--ui-text);
 }
 
+.canvas__zoom input[type='color'] {
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border: 1px solid var(--ui-line);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  margin-left: 0.25rem;
+}
+
+.bleed-preview {
+  position: absolute;
+  pointer-events: none;
+  border: 0.25mm dashed rgba(255, 96, 96, 0.75);
+}
+
+.crop-preview {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(200, 205, 210, 0.9);
+}
+
 .canvas__zoom span {
   font-family: var(--ui-mono);
   font-size: 0.6875rem;

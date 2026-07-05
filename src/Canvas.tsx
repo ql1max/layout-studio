@@ -385,6 +385,21 @@ export function PageView({
 
 type Transform = { x: number; y: number; scale: number };
 
+function canvasMarks(bleed: number): CSSProperties[] {
+  const o = `-${bleed + 5.5}mm`;
+  const t = '-0.125mm';
+  return [
+    { left: o, top: t, width: '4mm', height: '0.25mm' },
+    { right: o, top: t, width: '4mm', height: '0.25mm' },
+    { left: o, bottom: t, width: '4mm', height: '0.25mm' },
+    { right: o, bottom: t, width: '4mm', height: '0.25mm' },
+    { top: o, left: t, width: '0.25mm', height: '4mm' },
+    { top: o, right: t, width: '0.25mm', height: '4mm' },
+    { bottom: o, left: t, width: '0.25mm', height: '4mm' },
+    { bottom: o, right: t, width: '0.25mm', height: '4mm' },
+  ];
+}
+
 type DragState =
   | { type: 'pan'; startX: number; startY: number; origin: Transform }
   | {
@@ -440,6 +455,7 @@ export function CanvasView({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [transform, setTransform] = useState<Transform>({ x: 60, y: 40, scale: 0.5 });
+  const [canvasBg, setCanvasBg] = useState('#0c0c0d');
   const dragRef = useRef<DragState | null>(null);
   const transformRef = useRef(transform);
   transformRef.current = transform;
@@ -609,6 +625,7 @@ export function CanvasView({
     <div
       ref={containerRef}
       className="canvas"
+      style={{ backgroundColor: canvasBg }}
       onPointerDown={(event) => {
         onSelect(null);
         onEdit(null);
@@ -642,6 +659,16 @@ export function CanvasView({
               {index + 1} / {doc.pages.length} · {format.label}
             </span>
             <PageView doc={doc} page={page} interaction={interaction} />
+            {doc.output.bleedMm > 0 && (
+              <div
+                className="bleed-preview"
+                style={{ inset: `-${doc.output.bleedMm}mm` }}
+              />
+            )}
+            {doc.output.cropMarks &&
+              canvasMarks(doc.output.bleedMm).map((mark, index) => (
+                <span key={index} className="crop-preview" style={mark} />
+              ))}
           </div>
         ))}
 
@@ -687,6 +714,13 @@ export function CanvasView({
         >
           100%
         </button>
+        <input
+          type="color"
+          value={canvasBg}
+          onChange={(event) => setCanvasBg(event.target.value)}
+          title="Workspace color"
+          aria-label="Workspace color"
+        />
       </div>
     </div>
   );
