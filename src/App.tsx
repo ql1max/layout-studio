@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import { checkBrand, cmykRisky, collectColors } from './brand';
-import { CanvasView, PageView } from './Canvas';
+import { CanvasView, PageView, itemLabel } from './Canvas';
 import type { Selection } from './Canvas';
 import {
   MM,
@@ -259,13 +259,12 @@ export default function App() {
     setSelection({ pageId: selection.pageId, itemId: copy.id });
   };
 
-  const reorderSelected = (direction: 1 | -1) => {
-    if (!selection) return;
+  const reorderItem = (pageId: string, itemId: string, direction: 1 | -1) => {
     commit({
       ...docRef.current,
       pages: docRef.current.pages.map((page) => {
-        if (page.id !== selection.pageId) return page;
-        const index = page.items.findIndex((item) => item.id === selection.itemId);
+        if (page.id !== pageId) return page;
+        const index = page.items.findIndex((item) => item.id === itemId);
         const target = index + direction;
         if (index < 0 || target < 0 || target >= page.items.length) return page;
         const items = [...page.items];
@@ -274,6 +273,26 @@ export default function App() {
         return { ...page, items };
       }),
     });
+  };
+
+  const reorderSelected = (direction: 1 | -1) => {
+    if (selection) reorderItem(selection.pageId, selection.itemId, direction);
+  };
+
+  const layerName = (item: Item): string => {
+    if (item.kind === 'text') {
+      const words = item.text.replace(/\s+/g, ' ').trim();
+      return words.length > 22 ? `${words.slice(0, 22)}…` : words || 'Empty text';
+    }
+    if (item.kind === 'table') return `Table · ${item.rows.length} rows`;
+    return itemLabel(item);
+  };
+
+  const layerGlyph = (item: Item): string => {
+    if (item.kind === 'text') return 'T';
+    if (item.kind === 'shape') return '▬';
+    if (item.kind === 'image') return '▣';
+    return '☰';
   };
 
   /* Pages */
@@ -561,6 +580,51 @@ export default function App() {
                 + Add page
               </button>
             </div>
+          </section>
+
+          <section>
+            <h2>Layers</h2>
+            {focusPage.items.length === 0 ? (
+              <p className="hint">Nothing on this page yet.</p>
+            ) : (
+              <div className="layers">
+                {[...focusPage.items].reverse().map((item) => (
+                  <div
+                    key={item.id}
+                    className={`layer ${
+                      selection?.itemId === item.id ? 'is-active' : ''
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      className="layer__main"
+                      onClick={() =>
+                        setSelection({ pageId: focusPage.id, itemId: item.id })
+                      }
+                    >
+                      <strong>{layerGlyph(item)}</strong>
+                      <span>{layerName(item)}</span>
+                    </button>
+                    <span className="layer__z">
+                      <button
+                        type="button"
+                        title="Bring forward"
+                        onClick={() => reorderItem(focusPage.id, item.id, 1)}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        title="Send backward"
+                        onClick={() => reorderItem(focusPage.id, item.id, -1)}
+                      >
+                        ↓
+                      </button>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           <section>
