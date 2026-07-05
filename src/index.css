@@ -528,6 +528,65 @@ body {
   cursor: pointer;
 }
 
+.score-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 0.625rem;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.8125rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid;
+}
+
+.score-card--ok {
+  color: #7ee2a8;
+  background: rgba(126, 226, 168, 0.08);
+  border-color: rgba(126, 226, 168, 0.35);
+}
+
+.score-card--warn {
+  color: #e2c97e;
+  background: rgba(226, 201, 126, 0.08);
+  border-color: rgba(226, 201, 126, 0.35);
+}
+
+.score-card span {
+  font-family: var(--ui-mono);
+}
+
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--ui-text);
+  padding: 0.3rem 0.125rem;
+  border-bottom: 1px solid var(--ui-line);
+}
+
+.brand-row:last-of-type {
+  margin-bottom: 0.5rem;
+}
+
+.brand-row__dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: #7ee2a8;
+  flex-shrink: 0;
+}
+
+.brand-row__dot.is-warn {
+  background: #e2c97e;
+}
+
+.brand-row__status {
+  margin-left: auto;
+  font-size: 0.6875rem;
+  color: var(--ui-muted);
+}
+
 .violations {
   display: grid;
   gap: 0.25rem;

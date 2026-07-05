@@ -877,6 +877,31 @@ export default function App() {
                 <h2>
                   Brand check{violations.length > 0 ? ` (${violations.length})` : ''}
                 </h2>
+                <div
+                  className={`score-card ${violations.length === 0 ? 'score-card--ok' : 'score-card--warn'}`}
+                >
+                  <strong>{violations.length === 0 ? 'On brand' : 'Off brand'}</strong>
+                  <span>{Math.max(0, 100 - violations.length * 8)}%</span>
+                </div>
+                {(
+                  [
+                    ['Colors', /palette/],
+                    ['Fonts', /font/],
+                    ['Type sizes', /minimum/],
+                    ['Logo', /logo/i],
+                  ] as const
+                ).map(([label, pattern]) => {
+                  const count = violations.filter((v) => pattern.test(v.message)).length;
+                  return (
+                    <div className="brand-row" key={label}>
+                      <span className={count ? 'brand-row__dot is-warn' : 'brand-row__dot'} />
+                      <span>{label}</span>
+                      <span className="brand-row__status">
+                        {count ? `${count} issue${count > 1 ? 's' : ''}` : 'OK'}
+                      </span>
+                    </div>
+                  );
+                })}
                 {violations.length === 0 ? (
                   <p className="hint hint--ok">
                     Everything on the document follows the brand kit.
