@@ -537,7 +537,7 @@ export default function App() {
     <div className="studio">
       <header className="topbar">
         <div className="topbar__left">
-          <span className="topbar__logo">Layout Studio</span>
+          <h1 className="topbar__logo">Layout Studio</h1>
           <input
             className="topbar__name"
             value={doc.name}
@@ -562,13 +562,24 @@ export default function App() {
           >
             Redo
           </button>
-          <button type="button" className="print-button" onClick={() => window.print()}>
-            Export PDF
+          <button
+            type="button"
+            className="print-button"
+            aria-label="Print or save as PDF"
+            title="Open the browser print dialog, then choose Save as PDF"
+            onClick={() => window.print()}
+          >
+            Print PDF
           </button>
         </div>
       </header>
 
-      <div className="studio__body">
+      <p className="mobile-notice">
+        Full editing controls require a wider screen. You can still review and print the
+        current layout here.
+      </p>
+
+      <main className="studio__body">
         <aside className="rail">
           <section>
             <h2>Pages</h2>
@@ -1367,7 +1378,7 @@ export default function App() {
             </>
           )}
         </aside>
-      </div>
+      </main>
 
       <footer className="statusbar">
         <span>
