@@ -1,0 +1,5 @@
+# Allow required Vite/Wrangler build scripts; explicitly skip optional sharp compilation.
+allowBuilds:
+  esbuild: true
+  sharp: false
+  workerd: true

@@ -56,9 +56,9 @@ function TextView({
       ref.current.focus();
       const range = document.createRange();
       range.selectNodeContents(ref.current);
-      const sel = window.getSelection();
-      sel?.removeAllRanges();
-      sel?.addRange(range);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
     }
   }, [editing]);
 
@@ -79,11 +79,14 @@ function TextView({
         ref={ref}
         className="item-text is-editing"
         style={style}
+        role="textbox"
+        aria-label="Edit text"
+        tabIndex={0}
         contentEditable
         suppressContentEditableWarning
         onBlur={(event) => onCommit(event.currentTarget.innerText)}
         onKeyDown={(event) => {
-          if (event.key === 'Escape') (event.target as HTMLElement).blur();
+          if (event.key === 'Escape') event.currentTarget.blur();
           event.stopPropagation();
         }}
         onPointerDown={(event) => event.stopPropagation()}
@@ -162,12 +165,7 @@ function ItemBody({
 }) {
   if (item.kind === 'text') {
     return (
-      <TextView
-        item={item}
-        baselineMm={baselineMm}
-        editing={editing}
-        onCommit={onTextCommit}
-      />
+      <TextView item={item} baselineMm={baselineMm} editing={editing} onCommit={onTextCommit} />
     );
   }
 
@@ -313,8 +311,7 @@ export function PageView({
       {page.items.map((item) => {
         const rect = frameRectMm(item.frame, doc.format, doc.grid);
         const selected =
-          interaction?.selection?.pageId === page.id &&
-          interaction?.selection?.itemId === item.id;
+          interaction?.selection?.pageId === page.id && interaction?.selection?.itemId === item.id;
         const editing = interaction?.editingId === item.id;
 
         return (
@@ -326,9 +323,7 @@ export function PageView({
               top: `${rect.y}mm`,
               width: `${rect.w}mm`,
               height: `${rect.h}mm`,
-              ...(selected
-                ? ({ '--ring': `${1.5 / scale}px` } as CSSProperties)
-                : null),
+              ...(selected ? ({ '--ring': `${1.5 / scale}px` } as CSSProperties) : null),
             }}
             onPointerDown={
               interaction && !editing
@@ -507,7 +502,7 @@ export function CanvasView({
       focusRef.current = focusPageIndex;
       fitPage(focusPageIndex);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [focusPageIndex, doc.format]);
 
   // Wheel: scroll pans, ctrl/cmd + scroll zooms toward the cursor.
@@ -687,10 +682,7 @@ export function CanvasView({
             </span>
             <PageView doc={doc} page={page} interaction={interaction} />
             {doc.output.bleedMm > 0 && (
-              <div
-                className="bleed-preview"
-                style={{ inset: `-${doc.output.bleedMm}mm` }}
-              />
+              <div className="bleed-preview" style={{ inset: `-${doc.output.bleedMm}mm` }} />
             )}
             {doc.output.cropMarks &&
               canvasMarks(doc.output.bleedMm).map((mark, index) => (
@@ -723,7 +715,13 @@ export function CanvasView({
         const startMm = -offset / (MM * transform.scale);
         const endMm = (size - offset) / (MM * transform.scale);
         const step =
-          transform.scale > 1.2 ? 10 : transform.scale > 0.5 ? 20 : transform.scale > 0.25 ? 50 : 100;
+          transform.scale > 1.2
+            ? 10
+            : transform.scale > 0.5
+              ? 20
+              : transform.scale > 0.25
+                ? 50
+                : 100;
         const ticks: { pos: number; label: number }[] = [];
         for (let mm = Math.floor(startMm / step) * step; mm <= endMm; mm += step) {
           ticks.push({ pos: mm * MM * transform.scale + offset, label: mm });
@@ -731,10 +729,7 @@ export function CanvasView({
         return (
           <div key={axis} className={`ruler ruler--${axis === 'x' ? 'h' : 'v'}`}>
             {ticks.map((tick) => (
-              <span
-                key={tick.label}
-                style={axis === 'x' ? { left: tick.pos } : { top: tick.pos }}
-              >
+              <span key={tick.label} style={axis === 'x' ? { left: tick.pos } : { top: tick.pos }}>
                 {tick.label}
               </span>
             ))}
@@ -746,9 +741,7 @@ export function CanvasView({
       <div className="canvas__zoom" onPointerDown={(event) => event.stopPropagation()}>
         <button
           type="button"
-          onClick={() =>
-            setTransform((t) => ({ ...t, scale: Math.max(0.08, t.scale / 1.25) }))
-          }
+          onClick={() => setTransform((t) => ({ ...t, scale: Math.max(0.08, t.scale / 1.25) }))}
         >
           −
         </button>

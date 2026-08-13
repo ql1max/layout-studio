@@ -1,4 +1,6 @@
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -14,7 +16,9 @@
   --accent: #4a7dff;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
 }
 
@@ -103,7 +107,9 @@ body {
   border-radius: 9999px;
   padding: 0.3rem 0.8rem;
   cursor: pointer;
-  transition: color 120ms ease, border-color 120ms ease;
+  transition:
+    color 120ms ease,
+    border-color 120ms ease;
 }
 
 .ghost-button:hover:not(:disabled) {
@@ -380,7 +386,9 @@ body {
   border-radius: 0.5rem;
   padding: 0.5rem 0.625rem;
   cursor: pointer;
-  transition: border-color 120ms ease, color 120ms ease;
+  transition:
+    border-color 120ms ease,
+    color 120ms ease;
 }
 
 .palette button strong {
@@ -644,8 +652,8 @@ body {
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.05) 1px, transparent 1px)
-      0 0 / 22px 22px,
+    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.05) 1px, transparent 1px) 0 0 / 22px
+      22px,
     #0c0c0d;
   touch-action: none;
   cursor: grab;
@@ -871,11 +879,36 @@ body {
   z-index: 60;
 }
 
-.handle--n { top: 0; left: 50%; transform: translate(-50%, -50%); cursor: ns-resize; }
-.handle--s { bottom: 0; left: 50%; transform: translate(-50%, 50%); cursor: ns-resize; }
-.handle--e { right: 0; top: 50%; transform: translate(50%, -50%); cursor: ew-resize; }
-.handle--w { left: 0; top: 50%; transform: translate(-50%, -50%); cursor: ew-resize; }
-.handle--se { right: 0; bottom: 0; transform: translate(50%, 50%); cursor: nwse-resize; }
+.handle--n {
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  cursor: ns-resize;
+}
+.handle--s {
+  bottom: 0;
+  left: 50%;
+  transform: translate(-50%, 50%);
+  cursor: ns-resize;
+}
+.handle--e {
+  right: 0;
+  top: 50%;
+  transform: translate(50%, -50%);
+  cursor: ew-resize;
+}
+.handle--w {
+  left: 0;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  cursor: ew-resize;
+}
+.handle--se {
+  right: 0;
+  bottom: 0;
+  transform: translate(50%, 50%);
+  cursor: nwse-resize;
+}
 
 /* ── Items ───────────────────────────────────────────────── */
 
@@ -926,8 +959,20 @@ body {
   justify-content: center;
   border: 0.3mm dashed rgba(120, 120, 120, 0.55);
   background:
-    linear-gradient(45deg, transparent 49.7%, rgba(120, 120, 120, 0.3) 49.7%, rgba(120, 120, 120, 0.3) 50.3%, transparent 50.3%),
-    linear-gradient(-45deg, transparent 49.7%, rgba(120, 120, 120, 0.3) 49.7%, rgba(120, 120, 120, 0.3) 50.3%, transparent 50.3%);
+    linear-gradient(
+      45deg,
+      transparent 49.7%,
+      rgba(120, 120, 120, 0.3) 49.7%,
+      rgba(120, 120, 120, 0.3) 50.3%,
+      transparent 50.3%
+    ),
+    linear-gradient(
+      -45deg,
+      transparent 49.7%,
+      rgba(120, 120, 120, 0.3) 49.7%,
+      rgba(120, 120, 120, 0.3) 50.3%,
+      transparent 50.3%
+    );
   color: rgba(120, 120, 120, 0.9);
   font-size: 3mm;
   letter-spacing: 0.08em;

@@ -18,15 +18,7 @@ import {
   saveDoc,
   templates,
 } from './model';
-import type {
-  Doc,
-  FontId,
-  Frame,
-  GridOverlay,
-  Item,
-  Page,
-  PageFormat,
-} from './model';
+import type { Doc, FontId, Frame, GridOverlay, Item, Page, PageFormat } from './model';
 import './index.css';
 
 const HISTORY_LIMIT = 60;
@@ -173,9 +165,7 @@ export default function App() {
         page.id === pageId
           ? {
               ...page,
-              items: page.items.map((item) =>
-                item.id === itemId ? mutate(item) : item,
-              ),
+              items: page.items.map((item) => (item.id === itemId ? mutate(item) : item)),
             }
           : page,
       ),
@@ -575,8 +565,8 @@ export default function App() {
       </header>
 
       <p className="mobile-notice">
-        Full editing controls require a wider screen. You can still review and print the
-        current layout here.
+        Full editing controls require a wider screen. You can still review and print the current
+        layout here.
       </p>
 
       <main className="studio__body">
@@ -645,16 +635,12 @@ export default function App() {
                 {[...focusPage.items].reverse().map((item) => (
                   <div
                     key={item.id}
-                    className={`layer ${
-                      selection?.itemId === item.id ? 'is-active' : ''
-                    }`}
+                    className={`layer ${selection?.itemId === item.id ? 'is-active' : ''}`}
                   >
                     <button
                       type="button"
                       className="layer__main"
-                      onClick={() =>
-                        setSelection({ pageId: focusPage.id, itemId: item.id })
-                      }
+                      onClick={() => setSelection({ pageId: focusPage.id, itemId: item.id })}
                     >
                       <strong>{layerGlyph(item)}</strong>
                       <span>{layerName(item)}</span>
@@ -703,11 +689,7 @@ export default function App() {
             <h2>Templates</h2>
             <div className="template-list">
               {templates.map((template) => (
-                <button
-                  key={template.id}
-                  type="button"
-                  onClick={() => loadTemplate(template.id)}
-                >
+                <button key={template.id} type="button" onClick={() => loadTemplate(template.id)}>
                   {template.name}
                 </button>
               ))}
@@ -803,9 +785,7 @@ export default function App() {
                 <Field label="Format">
                   <select
                     value={doc.format}
-                    onChange={(event) =>
-                      setDocProps({ format: event.target.value as PageFormat })
-                    }
+                    onChange={(event) => setDocProps({ format: event.target.value as PageFormat })}
                   >
                     {Object.entries(pageFormats).map(([key, format]) => (
                       <option key={key} value={key}>
@@ -839,9 +819,7 @@ export default function App() {
                     value={doc.grid.columns}
                     min={2}
                     max={24}
-                    onCommit={(columns) =>
-                      setDocProps({ grid: { ...doc.grid, columns } })
-                    }
+                    onCommit={(columns) => setDocProps({ grid: { ...doc.grid, columns } })}
                   />
                 </Field>
                 <Field label="Gutter (mm)">
@@ -850,9 +828,7 @@ export default function App() {
                     min={0}
                     max={12}
                     step={0.5}
-                    onCommit={(gutterMm) =>
-                      setDocProps({ grid: { ...doc.grid, gutterMm } })
-                    }
+                    onCommit={(gutterMm) => setDocProps({ grid: { ...doc.grid, gutterMm } })}
                   />
                 </Field>
                 <Field label="Margin (mm)">
@@ -860,9 +836,7 @@ export default function App() {
                     value={doc.grid.marginMm}
                     min={4}
                     max={30}
-                    onCommit={(marginMm) =>
-                      setDocProps({ grid: { ...doc.grid, marginMm } })
-                    }
+                    onCommit={(marginMm) => setDocProps({ grid: { ...doc.grid, marginMm } })}
                   />
                 </Field>
                 <Field label="Baseline (mm)">
@@ -871,9 +845,7 @@ export default function App() {
                     min={2}
                     max={12}
                     step={0.5}
-                    onCommit={(baselineMm) =>
-                      setDocProps({ grid: { ...doc.grid, baselineMm } })
-                    }
+                    onCommit={(baselineMm) => setDocProps({ grid: { ...doc.grid, baselineMm } })}
                   />
                 </Field>
                 <Field label="Overlay">
@@ -900,6 +872,7 @@ export default function App() {
                       type="button"
                       className="chip"
                       style={{ background: color }}
+                      aria-label={`Remove ${color} from the palette`}
                       title={`Remove ${color} from the palette`}
                       onClick={() =>
                         setDocProps({
@@ -961,17 +934,13 @@ export default function App() {
                     min={4}
                     max={14}
                     step={0.5}
-                    onCommit={(minBodyPt) =>
-                      setDocProps({ brand: { ...doc.brand, minBodyPt } })
-                    }
+                    onCommit={(minBodyPt) => setDocProps({ brand: { ...doc.brand, minBodyPt } })}
                   />
                 </Field>
               </section>
 
               <section>
-                <h2>
-                  Brand check{violations.length > 0 ? ` (${violations.length})` : ''}
-                </h2>
+                <h2>Brand check{violations.length > 0 ? ` (${violations.length})` : ''}</h2>
                 <div
                   className={`score-card ${violations.length === 0 ? 'score-card--ok' : 'score-card--warn'}`}
                 >
@@ -998,9 +967,7 @@ export default function App() {
                   );
                 })}
                 {violations.length === 0 ? (
-                  <p className="hint hint--ok">
-                    Everything on the document follows the brand kit.
-                  </p>
+                  <p className="hint hint--ok">Everything on the document follows the brand kit.</p>
                 ) : (
                   <div className="violations">
                     {violations.map((violation, index) => (
@@ -1013,9 +980,7 @@ export default function App() {
                           if (!page) return;
                           setSelectedPageId(page.id);
                           setSelection(
-                            violation.itemId
-                              ? { pageId: page.id, itemId: violation.itemId }
-                              : null,
+                            violation.itemId ? { pageId: page.id, itemId: violation.itemId } : null,
                           );
                         }}
                       >
@@ -1035,9 +1000,7 @@ export default function App() {
                     min={0}
                     max={5}
                     step={0.5}
-                    onCommit={(bleedMm) =>
-                      setDocProps({ output: { ...doc.output, bleedMm } })
-                    }
+                    onCommit={(bleedMm) => setDocProps({ output: { ...doc.output, bleedMm } })}
                   />
                 </Field>
                 <label className="check-row">
@@ -1055,9 +1018,7 @@ export default function App() {
                 <Field label="Print range">
                   <select
                     value={printRange}
-                    onChange={(event) =>
-                      setPrintRange(event.target.value as 'current' | 'all')
-                    }
+                    onChange={(event) => setPrintRange(event.target.value as 'current' | 'all')}
                   >
                     <option value="current">Current page</option>
                     <option value="all">All pages</option>
@@ -1065,8 +1026,8 @@ export default function App() {
                 </Field>
                 {riskyColors.length > 0 && (
                   <p className="hint hint--warn">
-                    CMYK soft proof: {riskyColors.join(', ')} may shift in
-                    print. Browsers export RGB; convert in prepress.
+                    CMYK soft proof: {riskyColors.join(', ')} may shift in print. Browsers export
+                    RGB; convert in prepress.
                   </p>
                 )}
                 <div className="button-row">
@@ -1083,10 +1044,9 @@ export default function App() {
               <section>
                 <h2>Help</h2>
                 <p className="hint">
-                  Scroll to pan, Ctrl + scroll to zoom. Drag items to move them
-                  on the grid, drag the handles to resize. Double-click text to
-                  edit. Arrow keys nudge, Shift + arrows resize, Ctrl + D
-                  duplicates.
+                  Scroll to pan, Ctrl + scroll to zoom. Drag items to move them on the grid, drag
+                  the handles to resize. Double-click text to edit. Arrow keys nudge, Shift + arrows
+                  resize, Ctrl + D duplicates.
                 </p>
               </section>
             </>
@@ -1105,11 +1065,7 @@ export default function App() {
                   </button>
                 </div>
                 <div className="button-row">
-                  <button
-                    type="button"
-                    className="ghost-button"
-                    onClick={() => reorderSelected(1)}
-                  >
+                  <button type="button" className="ghost-button" onClick={() => reorderSelected(1)}>
                     Forward
                   </button>
                   <button
@@ -1152,9 +1108,7 @@ export default function App() {
                       min={5}
                       max={120}
                       step={0.5}
-                      onCommit={(sizePt) =>
-                        updateSelected((item) => ({ ...item, sizePt }))
-                      }
+                      onCommit={(sizePt) => updateSelected((item) => ({ ...item, sizePt }))}
                     />
                   </Field>
                   <Field label="Weight">
@@ -1180,9 +1134,7 @@ export default function App() {
                       min={0.9}
                       max={2.4}
                       step={0.05}
-                      onCommit={(lineHeight) =>
-                        updateSelected((item) => ({ ...item, lineHeight }))
-                      }
+                      onCommit={(lineHeight) => updateSelected((item) => ({ ...item, lineHeight }))}
                     />
                   </Field>
                   <Field label="Tracking (em)">
@@ -1235,8 +1187,8 @@ export default function App() {
                   </label>
                   {selectedItem.snapBaseline && (
                     <p className="hint">
-                      Line height rounds to whole baseline units and the first
-                      baseline sits on the grid.
+                      Line height rounds to whole baseline units and the first baseline sits on the
+                      grid.
                     </p>
                   )}
                 </section>
@@ -1275,9 +1227,7 @@ export default function App() {
                       min={0}
                       max={20}
                       step={0.5}
-                      onCommit={(radiusMm) =>
-                        updateSelected((item) => ({ ...item, radiusMm }))
-                      }
+                      onCommit={(radiusMm) => updateSelected((item) => ({ ...item, radiusMm }))}
                     />
                   </Field>
                 </section>
@@ -1327,9 +1277,7 @@ export default function App() {
                       min={5}
                       max={24}
                       step={0.5}
-                      onCommit={(sizePt) =>
-                        updateSelected((item) => ({ ...item, sizePt }))
-                      }
+                      onCommit={(sizePt) => updateSelected((item) => ({ ...item, sizePt }))}
                     />
                   </Field>
                   <Field label="Color">
@@ -1382,8 +1330,8 @@ export default function App() {
 
       <footer className="statusbar">
         <span>
-          {pageFormats[doc.format].label} · {doc.grid.columns} columns ·{' '}
-          {doc.grid.baselineMm} mm baseline
+          {pageFormats[doc.format].label} · {doc.grid.columns} columns · {doc.grid.baselineMm} mm
+          baseline
         </span>
         <span>
           A labs experiment by{' '}
@@ -1419,10 +1367,7 @@ export default function App() {
                 background: page.background,
               }}
             >
-              <div
-                className="print-trim"
-                style={{ left: `${bleedMm}mm`, top: `${bleedMm}mm` }}
-              >
+              <div className="print-trim" style={{ left: `${bleedMm}mm`, top: `${bleedMm}mm` }}>
                 <PageView doc={doc} page={page} />
               </div>
             </div>

@@ -275,8 +275,7 @@ function auroraSheet(): Doc {
     makeImage({ frame: { col: 0, row: 15, colSpan: 12, rowSpan: 13 } }),
     makeText({
       frame: { col: 0, row: 29, colSpan: 7, rowSpan: 8 },
-      text:
-        'Aurora One pairs a full-spectrum LED array with a machined aluminium head that rotates through 270 degrees. Color temperature follows the time of day by default, and a single dial overrides everything when you know what you want.',
+      text: 'Aurora One pairs a full-spectrum LED array with a machined aluminium head that rotates through 270 degrees. Color temperature follows the time of day by default, and a single dial overrides everything when you know what you want.',
       sizePt: 9,
       lineHeight: 1.55,
     }),
@@ -391,8 +390,7 @@ function studioPoster(): Doc {
     }),
     makeText({
       frame: { col: 0, row: 44, colSpan: 7, rowSpan: 8 },
-      text:
-        'A poster set on the same twelve-column grid as everything else in this studio. Move things. The grid holds.',
+      text: 'A poster set on the same twelve-column grid as everything else in this studio. Move things. The grid holds.',
       sizePt: 10,
       color: '#6d6d6b',
       lineHeight: 1.5,
